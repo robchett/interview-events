@@ -29,21 +29,21 @@ final class EventController extends AbstractController
 
     #[Route('/events', methods: ['POST'])]
     public function create(
-        Request $request,
-        SerializerInterface $serializer,
-        ValidatorInterface $validator,
+        Request                $request,
+        SerializerInterface    $serializer,
+        ValidatorInterface     $validator,
         EntityManagerInterface $entityManager,
     ): Response
     {
         try {
             /** @var Event[] $events */
-            $events = $serializer->deserialize($request->getContent(), Event::class.'[]', 'json');
+            $events = $serializer->deserialize($request->getContent(), Event::class . '[]', 'json');
             $this->checkForOverlaps($events);
         } catch (JsonException|NotNormalizableValueException|UnexpectedValueException|ExceptionInterface|OverlappingEventException $exception) {
             return $this->json(['success' => false, 'message' => $exception->getMessage()], 400);
         }
 
-        if (! $events) {
+        if (!$events) {
             return $this->json(['success' => false, 'message' => "No events provided"], 400);
         }
 

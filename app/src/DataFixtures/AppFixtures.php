@@ -17,7 +17,7 @@ final class AppFixtures extends Fixture
             $event = new Event();
             $event->setTitle('Test Event ' . $i);
             $event->setStart(\DateTimeImmutable::createFromTimestamp(time() - ($i * 24 * 60 * 60)));
-            $event->setEnd(\DateTimeImmutable::createFromTimestamp(time() - (($i - 1 ) * 24 * 60 * 60)));
+            $event->setEnd(\DateTimeImmutable::createFromTimestamp(time() - (($i - 1) * 24 * 60 * 60)));
             $manager->persist($event);
 
         }
