@@ -43,6 +43,10 @@ final class EventController extends AbstractController
             return $this->json(['success' => false, 'message' => $exception->getMessage()], 400);
         }
 
+        if (! $events) {
+            return $this->json(['success' => false, 'message' => "No events provided"], 400);
+        }
+
         $entities = [];
         $eventManager = $entityManager->getRepository(Event::class);
 

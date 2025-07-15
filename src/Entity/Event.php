@@ -24,7 +24,8 @@ final class Event implements \JsonSerializable
     private ?\DateTimeImmutable $start = null;
 
     #[ORM\Column]
-    #[Assert\GreaterThan(propertyPath: 'start')]
+    #[Assert\NotNull()]
+    #[Assert\GreaterThan(propertyPath: 'start', message: 'This value should be greater than [event.start].')]
     private ?\DateTimeImmutable $end = null;
 
     public function getId(): ?int
