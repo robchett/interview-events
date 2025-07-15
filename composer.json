@@ -79,6 +79,8 @@
     },
     "require-dev": {
         "doctrine/doctrine-fixtures-bundle": "^4.1",
-        "symfony/maker-bundle": "*"
+        "psalm/plugin-symfony": "^5.2",
+        "symfony/maker-bundle": "*",
+        "vimeo/psalm": "^6.13"
     }
 }
