@@ -99,6 +99,10 @@ final class EventController extends AbstractController
 
                 return $this->json(['success' => false, 'message' => "Error in event[$index]: $errorsString"], 400);
             }
+            assert($event->getStart() !== null);
+            assert($event->getEnd() !== null);
+            $event->setStart($event->getStart()->setTimezone(new \DateTimeZone('UTC')));
+            $event->setEnd($event->getEnd()->setTimezone(new \DateTimeZone('UTC')));
             $entities[] = $event;
             $entityManager->persist($event);
         }
