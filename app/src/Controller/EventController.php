@@ -67,8 +67,8 @@ final class EventController extends AbstractController
         foreach (array_chunk($events, 100) as $groupIndex => $eventChunk) {
             $overlappingEventsQuery = $eventManager->createQueryBuilder('event');
             foreach ($eventChunk as $index => $event) {
-                $overlappingEventsQuery->orWhere("(:start{$index} BETWEEN event.start AND event.end)");
-                $overlappingEventsQuery->orWhere("(:end{$index} BETWEEN event.start AND event.end)");
+                $overlappingEventsQuery->orWhere("(:start{$index} >= event.start AND :start{$index} < event.end)");
+                $overlappingEventsQuery->orWhere("(:end{$index} > event.start AND :end{$index} <= event.end)");
                 $overlappingEventsQuery->setParameter("start{$index}", $event->getStart());
                 $overlappingEventsQuery->setParameter("end{$index}", $event->getEnd());
             }
@@ -95,8 +95,8 @@ final class EventController extends AbstractController
         for ($i = 0; $i < count($events); $i++) {
             for ($j = $i + 1; $j < count($events); $j++) {
                 if (
-                    ($events[$i]->getStart() >= $events[$j]->getStart() && $events[$i]->getStart() <= $events[$j]->getEnd()) ||
-                    ($events[$i]->getEnd() >= $events[$j]->getStart() && $events[$i]->getEnd() <= $events[$j]->getEnd())
+                    ($events[$i]->getStart() >= $events[$j]->getStart() && $events[$i]->getStart() < $events[$j]->getEnd()) ||
+                    ($events[$i]->getEnd() > $events[$j]->getStart() && $events[$i]->getEnd() <= $events[$j]->getEnd())
                 ) {
                     throw new OverlappingEventException("Event {$i} overlaps with event {$j}");
                 }
