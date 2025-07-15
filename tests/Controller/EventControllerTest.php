@@ -48,6 +48,12 @@ class EventControllerTest extends KernelTestCase
             '[]',
             '{"success":false,"message":"No events provided"}'
         ];
+        yield 'invalidDate' => [
+            <<<JSON
+            [{"title": "title", "start": "invalid", "end": "2020-01-01T0:00:00"}]
+            JSON,
+            '{"success":false,"message":"Failed to parse time string (invalid) at position 0 (i): The timezone could not be found in the database"}'
+        ];
         yield 'noTitle' => [
             <<<JSON
             [{"title": "", "start": "2020-01-01T00:00:00", "end": "2020-01-01T12:00:00"}]
