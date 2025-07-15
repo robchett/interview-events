@@ -4,6 +4,7 @@ namespace App\Controller;
 
 use App\Entity\Event;
 use App\Exception\OverlappingEventException;
+use App\Repository\EventRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\Exception\JsonException;
 use Symfony\Component\HttpFoundation\Request;
@@ -21,10 +22,9 @@ final class EventController extends AbstractController
 {
 
     #[Route('/events', methods: ['GET', 'HEAD'])]
-    public function list(EntityManagerInterface $entityManager): Response
+    public function list(EventRepository $eventManager): Response
     {
-        $eventManager = $entityManager->getRepository(Event::class)->findAll();
-        return $this->json($eventManager);
+        return $this->json($eventManager->findAll());
     }
 
     #[Route('/events', methods: ['POST'])]
