@@ -1,0 +1,39 @@
+services:
+  php:
+    build:
+      context: .
+      dockerfile: app.Dockerfile
+    container_name: symfony-demo-php
+    expose:
+      - 8000
+    environment:
+      # Using default mysql creds, change these in production
+      DATABASE_URL: "mysql://root:mariadb@symfony-demo-mysql:3306/symfony-demo?serverVersion=10.5.8-MariaDB"
+      stage: dev
+    working_dir: /var/www/html
+    entrypoint: ["/usr/local/bin/symfony", "server:start", "-no-tls", "--allow-all-ip"]
+    networks:
+      - app-symfony-demo
+    develop:
+      watch:
+        - action: sync
+          path: ./app
+          target: /var/www/html
+          ignore:
+            - vendor/
+            - var/
+        - action: rebuild
+          path: ./app/composer.json
+
+  db:
+    image: mariadb
+    container_name: symfony-demo-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: mariadb
+      MYSQL_DATABASE: symfony-demo
+    networks:
+      - app-symfony-demo
+
+networks:
+  app-symfony-demo:
+    external: true
