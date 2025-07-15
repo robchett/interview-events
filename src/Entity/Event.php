@@ -74,7 +74,11 @@ final class Event implements \JsonSerializable
      */
     public function jsonSerialize(): mixed
     {
-        if (! $this->getStart() || ! $this->getEnd()) {
+        if (
+            $this->getTitle() === null ||
+            $this->getStart() === null ||
+            $this->getEnd() === null
+        ) {
             throw new IncompleteEventException();
         }
         return [
