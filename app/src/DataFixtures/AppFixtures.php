@@ -13,13 +13,15 @@ final class AppFixtures extends Fixture
     public function load(ObjectManager $manager): void
     {
         // create 200 products! Bam!
-        for ($i = 1; $i <= 200; $i++) {
+        for ($i = 1; $i <= 2000; $i++) {
             $event = new Event();
             $event->setTitle('Test Event ' . $i);
             $event->setStart(\DateTimeImmutable::createFromTimestamp(time() - ($i * 24 * 60 * 60)));
             $event->setEnd(\DateTimeImmutable::createFromTimestamp(time() - (($i - 1) * 24 * 60 * 60)));
             $manager->persist($event);
-
+            if ($i % 100 === 0) {
+                $manager->flush();
+            }
         }
 
         $manager->flush();
