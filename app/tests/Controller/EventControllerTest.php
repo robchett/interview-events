@@ -6,6 +6,7 @@ use App\Controller\EventController;
 use App\Entity\Event;
 use App\Repository\EventRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\Query;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\HttpFoundation\Request;
@@ -14,22 +15,25 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 class EventControllerTest extends KernelTestCase
 {
-
     public function testGetEvents()
     {
         self::bootKernel();
         $container = static::getContainer();
 
-        $eventManager = $this->createMock(EventRepository::class);
-        $eventManager->method('findAll')->willReturn([
+        $query = $this->createMock(Query::class);
+        $query->method('execute')->willReturn([
             new Event()->setTitle('Test1')->setStart(\DateTimeImmutable::createFromFormat('Y-m-d\TH:i:s', '2020-01-01T00:00:00'))->setEnd(\DateTimeImmutable::createFromFormat('Y-m-d\TH:i:s', '2020-01-01T12:00:00')),
             new Event()->setTitle('Test2')->setStart(\DateTimeImmutable::createFromFormat('Y-m-d\TH:i:s', '2020-01-01T00:00:00'))->setEnd(\DateTimeImmutable::createFromFormat('Y-m-d\TH:i:s', '2020-01-01T12:00:00')),
             new Event()->setTitle('Test3')->setStart(\DateTimeImmutable::createFromFormat('Y-m-d\TH:i:s', '2020-01-01T00:00:00'))->setEnd(\DateTimeImmutable::createFromFormat('Y-m-d\TH:i:s', '2020-01-01T12:00:00')),
         ]);
 
-        $controller = new EventController();
+        $controller = $this->createPartialMock(EventController::class, ['getListQuery']);
+        $controller->method('getListQuery')->willReturn($query);
         $controller->setContainer($container);
-        $response = $controller->list($eventManager);
+        $response = $controller->list(
+            new Request(),
+            $container->get(EventRepository::class),
+        );
         $this->assertEquals(200, $response->getStatusCode());
         $this->assertEquals('application/json', $response->headers->get('Content-Type'));
         $expectedBody = <<<JSON
