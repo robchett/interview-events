@@ -45,6 +45,7 @@ final class EventController extends AbstractController
         $this->addDateFilter('end >', EventFilter::endFrom, $request->query->getString(EventFilter::endFrom->value), $query);
         $this->addDateFilter('end <', EventFilter::endTo, $request->query->getString(EventFilter::endTo->value), $query);
         $this->addTextFilter('title', EventFilter::title, $request->query->getString(EventFilter::title->value), $query);
+        $this->addPagination($request->query->getInt('pageSize', 1000), $request->query->getInt('page', 1), $query);
         return $query->getQuery();
     }
 
@@ -76,6 +77,26 @@ final class EventController extends AbstractController
         }
         $query->andWhere("event.{$column} :{$filter->value}");
         $query->setParameter($filter->value, $parsedTime->format('Y-m-d H:i:s'));
+    }
+
+
+    /**
+     * @throws InvalidFilterException
+     */
+    protected function addPagination(int $pageSize, int $page, QueryBuilder $query): void
+    {
+        if (! is_numeric($pageSize)) {
+            throw new InvalidFilterException("pageSize is not valid");
+        }
+        if ($pageSize > 1000) {
+            throw new InvalidFilterException("pageSize is not valid, cannot exceed 1000");
+        }
+        $query->setMaxResults($pageSize);
+
+        if (! is_numeric($page)) {
+            throw new InvalidFilterException("page is not valid");
+        }
+        $query->setFirstResult($pageSize * ($page - 1));
     }
 
     #[Route('/events', methods: ['POST'])]
