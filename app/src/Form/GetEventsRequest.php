@@ -22,6 +22,7 @@ class GetEventsRequest
     public function getQuery(EventRepository $eventManager): Query
     {
         $query = $eventManager->createQueryBuilder('event');
+        $query->addOrderBy('event.start', 'ASC');
         $this->addDateFilter('start >', EventFilter::startFrom, $this->startFrom ?? null, $query);
         $this->addDateFilter('start <', EventFilter::startTo, $this->startTo ?? null, $query);
         $this->addDateFilter('end >', EventFilter::endFrom, $this->endFrom ?? null, $query);
