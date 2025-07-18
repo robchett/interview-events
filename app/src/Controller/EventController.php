@@ -2,16 +2,13 @@
 
 namespace App\Controller;
 
-use App\Enums\EventFilter;
 use App\Exception\EventDeserializationException;
 use App\Exception\EventValidationException;
-use App\Exception\InvalidFilterException;
+use App\Form\GetEventsRequest;
+use App\Form\Type\GetEventsType;
 use App\Repository\EventRepository;
 use App\Service\EventPayloadValidator;
-use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
-use Doctrine\ORM\Query;
-use Doctrine\ORM\QueryBuilder;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -26,77 +23,16 @@ final class EventController extends AbstractController
     #[Route('/events', methods: ['GET', 'HEAD'])]
     public function list(Request $request, EventRepository $eventManager): Response
     {
-        try {
-            $query = $this->getListQuery($eventManager, $request);
+        $eventsRequest = new GetEventsRequest();
+        $form = $this->createForm(GetEventsType::class, $eventsRequest);
+        $form->submit($request->query->all(), false);
+
+        if ($form->isSubmitted() && $form->isValid()) {
+            $query = $eventsRequest->getQuery($eventManager);
             return $this->json($query->execute());
-        } catch (InvalidFilterException $exception) {
-            return $this->json(["success" => false, "message" => $exception->getMessage()], 400);
+        } else {
+            return $this->json(["success" => false, "message" => $form->getErrors(), "submitted" => $form->isSubmitted(), 'valid' => $form->isValid()], 400);
         }
-    }
-
-    /**
-     * @throws InvalidFilterException
-     */
-    public function getListQuery(EventRepository $eventManager, Request $request): Query
-    {
-        $query = $eventManager->createQueryBuilder('event');
-        $this->addDateFilter('start >', EventFilter::startFrom, $request->query->getString(EventFilter::startFrom->value), $query);
-        $this->addDateFilter('start <', EventFilter::startTo, $request->query->getString(EventFilter::startTo->value), $query);
-        $this->addDateFilter('end >', EventFilter::endFrom, $request->query->getString(EventFilter::endFrom->value), $query);
-        $this->addDateFilter('end <', EventFilter::endTo, $request->query->getString(EventFilter::endTo->value), $query);
-        $this->addTextFilter('title', EventFilter::title, $request->query->getString(EventFilter::title->value), $query);
-        $this->addPagination($request->query->getInt('pageSize', 1000), $request->query->getInt('page', 1), $query);
-        return $query->getQuery();
-    }
-
-    /**
-     * @param 'title' $column
-     * @throws InvalidFilterException
-     */
-    protected function addTextFilter(string $column, EventFilter $filter, string $value, QueryBuilder $query): void
-    {
-        if (!$value) {
-            return;
-        }
-        $query->andWhere("event.{$column} LIKE :{$filter->value}");
-        $query->setParameter($filter->value, "%$value%");
-    }
-
-    /**
-     * @param 'start >'|'start <'|'end >'|'end <' $column
-     * @throws InvalidFilterException
-     */
-    protected function addDateFilter(string $column, EventFilter $filter, string $value, QueryBuilder $query): void
-    {
-        if (! $value) {
-            return;
-        }
-        $parsedTime = DateTimeImmutable::createFromFormat('Y-m-d\TH:i:s', $value);
-        if ($parsedTime === false) {
-            throw new InvalidFilterException("{$filter->value} is not a valid date in modified ISO8601 format");
-        }
-        $query->andWhere("event.{$column} :{$filter->value}");
-        $query->setParameter($filter->value, $parsedTime->format('Y-m-d H:i:s'));
-    }
-
-
-    /**
-     * @throws InvalidFilterException
-     */
-    protected function addPagination(int $pageSize, int $page, QueryBuilder $query): void
-    {
-        if (! is_numeric($pageSize)) {
-            throw new InvalidFilterException("pageSize is not valid");
-        }
-        if ($pageSize > 1000) {
-            throw new InvalidFilterException("pageSize is not valid, cannot exceed 1000");
-        }
-        $query->setMaxResults($pageSize);
-
-        if (! is_numeric($page)) {
-            throw new InvalidFilterException("page is not valid");
-        }
-        $query->setFirstResult($pageSize * ($page - 1));
     }
 
     #[Route('/events', methods: ['POST'])]

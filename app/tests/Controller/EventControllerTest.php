@@ -8,6 +8,7 @@ use App\Repository\EventRepository;
 use App\Service\EventPayloadValidator;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Query;
+use Doctrine\ORM\QueryBuilder;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 use Symfony\Component\HttpFoundation\Request;
@@ -21,19 +22,22 @@ class EventControllerTest extends KernelTestCase
         self::bootKernel();
         $container = static::getContainer();
 
+        $eventRepository = $this->createMock(EventRepository::class);
+        $queryBuilder = $this->createMock(QueryBuilder::class);
         $query = $this->createMock(Query::class);
+        $eventRepository->method('createQueryBuilder')->with('event')->willReturn($queryBuilder);
+        $queryBuilder->method('getQuery')->willReturn($query);
         $query->method('execute')->willReturn([
             new Event()->setTitle('Test1')->setStart(\DateTimeImmutable::createFromFormat('Y-m-d\TH:i:s', '2020-01-01T00:00:00'))->setEnd(\DateTimeImmutable::createFromFormat('Y-m-d\TH:i:s', '2020-01-01T12:00:00')),
             new Event()->setTitle('Test2')->setStart(\DateTimeImmutable::createFromFormat('Y-m-d\TH:i:s', '2020-01-01T00:00:00'))->setEnd(\DateTimeImmutable::createFromFormat('Y-m-d\TH:i:s', '2020-01-01T12:00:00')),
             new Event()->setTitle('Test3')->setStart(\DateTimeImmutable::createFromFormat('Y-m-d\TH:i:s', '2020-01-01T00:00:00'))->setEnd(\DateTimeImmutable::createFromFormat('Y-m-d\TH:i:s', '2020-01-01T12:00:00')),
         ]);
 
-        $controller = $this->createPartialMock(EventController::class, ['getListQuery']);
-        $controller->method('getListQuery')->willReturn($query);
+        $controller = new EventController();
         $controller->setContainer($container);
         $response = $controller->list(
             new Request(),
-            $container->get(EventRepository::class),
+            $eventRepository
         );
         $this->assertEquals(200, $response->getStatusCode());
         $this->assertEquals('application/json', $response->headers->get('Content-Type'));
