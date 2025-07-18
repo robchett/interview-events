@@ -22,17 +22,17 @@ class EventTest extends TestCase
     public function testGetSetStart(): void
     {
         $entity = new Event();
-        $value = $this->createMock(\DateTimeImmutable::class);
+        $value = new DateTimeImmutable('2020-01-01 12:00:00+2:00');
         $entity->setStart($value);
-        $this->assertEquals($value, $entity->getStart());
+        $this->assertEquals('2020-01-01 10:00:00+00:00', $entity->getStart()->format('Y-m-d H:i:sP'));
     }
 
     public function testGetSetEnd(): void
     {
         $entity = new Event();
-        $value = $this->createMock(\DateTimeImmutable::class);
+        $value = new DateTimeImmutable('2020-01-01 12:00:00+2:00');
         $entity->setEnd($value);
-        $this->assertEquals($value, $entity->getEnd());
+        $this->assertEquals('2020-01-01 10:00:00+00:00', $entity->getEnd()->format('Y-m-d H:i:sP'));
     }
 
     public function testJsonSerialize(): void

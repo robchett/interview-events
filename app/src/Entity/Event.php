@@ -52,7 +52,8 @@ final class Event implements \JsonSerializable
 
     public function setStart(\DateTimeImmutable $start): static
     {
-        $this->start = $start;
+
+        $this->start = $start->setTimezone(new \DateTimeZone('UTC'));
 
         return $this;
     }
@@ -64,7 +65,7 @@ final class Event implements \JsonSerializable
 
     public function setEnd(\DateTimeImmutable $end): static
     {
-        $this->end = $end;
+        $this->end = $end->setTimezone(new \DateTimeZone('UTC'));
 
         return $this;
     }

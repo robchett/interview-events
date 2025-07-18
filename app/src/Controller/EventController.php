@@ -101,8 +101,6 @@ final class EventController extends AbstractController
             }
             assert($event->getStart() !== null);
             assert($event->getEnd() !== null);
-            $event->setStart($event->getStart()->setTimezone(new \DateTimeZone('UTC')));
-            $event->setEnd($event->getEnd()->setTimezone(new \DateTimeZone('UTC')));
             $entities[] = $event;
             $entityManager->persist($event);
         }
