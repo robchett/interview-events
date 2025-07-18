@@ -10,6 +10,9 @@
 > docker-compose exec php vendor/bin/psalm
 
 # [Optional] Run tests
+> docker-compose exec php php bin/console --env=test doctrine:database:create
+> docker-compose exec php php bin/console --env=test doctrine:schema:create
+> docker-compose exec php php bin/console --env=test doctrine:fixtures:load --purge-with-truncate --no-interaction
 > docker-compose exec php bin/phpunit
 
 # [Optional] Edit code

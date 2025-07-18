@@ -5,6 +5,7 @@ namespace Controller;
 use App\Controller\EventController;
 use App\Entity\Event;
 use App\Repository\EventRepository;
+use App\Service\EventPayloadValidator;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Query;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -46,47 +47,49 @@ class EventControllerTest extends KernelTestCase
     {
         yield 'noBody' => [
             '',
-            '{"success":false,"message":"Syntax error"}'
-        ];
-        yield 'noEvents' => [
-            '[]',
-            '{"success":false,"message":"No events provided"}'
+            '{"success":false,"message":"Deserialization failed"}'
         ];
         yield 'invalidDate' => [
             <<<JSON
             [{"title": "title", "start": "invalid", "end": "2020-01-01T0:00:00"}]
             JSON,
-            '{"success":false,"message":"Failed to parse time string (invalid) at position 0 (i): The timezone could not be found in the database"}'
+            '{"success":false,"message":"Deserialization failed"}'
         ];
         yield 'noTitle' => [
             <<<JSON
             [{"title": "", "start": "2020-01-01T00:00:00", "end": "2020-01-01T12:00:00"}]
             JSON,
-            '{"success":false,"message":"Error in event[0]: Object(App\\\\Entity\\\\Event).title:\n    This value should not be blank. (code c1051bb4-d103-4f74-8988-acbcafc7fdc3)\n"}'
+            '{"success":false,"message":"Validation error: Object(App\\\\Entity\\\\Event).title:\n    This value should not be blank. (code c1051bb4-d103-4f74-8988-acbcafc7fdc3)\n in event\n{\u0022title\u0022:\u0022\u0022,\u0022start\u0022:\u00222020-01-01 00:00:00\u0022,\u0022end\u0022:\u00222020-01-01 12:00:00\u0022}"}'
         ];
         yield 'noStart' => [
             <<<JSON
             [{"title": "title", "end": "2020-01-01T12:00:00"}]
             JSON,
-            '{"success":false,"message":"Error in event[0]: Object(App\\\\Entity\\\\Event).start:\n    This value should not be null. (code ad32d13f-c3d4-423b-909a-857b961eb720)\n"}'
+            '{"success":false,"message":"Validation error: Object(App\\\\Entity\\\\Event).start:\n    This value should not be null. (code ad32d13f-c3d4-423b-909a-857b961eb720)\n in event\n{\u0022title\u0022:\u0022title\u0022,\u0022start\u0022:null,\u0022end\u0022:\u00222020-01-01 12:00:00\u0022}"}'
         ];
         yield 'noEnd' => [
             <<<JSON
             [{"title": "title", "start": "2020-01-01T12:00:00"}]
             JSON,
-            '{"success":false,"message":"Error in event[0]: Object(App\\\\Entity\\\\Event).end:\n    This value should not be null. (code ad32d13f-c3d4-423b-909a-857b961eb720)\n"}'
+            '{"success":false,"message":"Validation error: Object(App\\\\Entity\\\\Event).end:\n    This value should not be null. (code ad32d13f-c3d4-423b-909a-857b961eb720)\n in event\n{\u0022title\u0022:\u0022title\u0022,\u0022start\u0022:\u00222020-01-01 12:00:00\u0022,\u0022end\u0022:null}"}'
         ];
         yield 'startAfterEnd' => [
             <<<JSON
             [{"title": "title", "start": "2020-01-01T12:00:00", "end": "2020-01-01T0:00:00"}]
             JSON,
-            '{"success":false,"message":"Error in event[0]: Object(App\\\\Entity\\\\Event).end:\n    This value should be greater than [event.start]. (code 778b7ae0-84d3-481a-9dec-35fdb64b1d78)\n"}'
+            '{"success":false,"message":"Validation error: Object(App\\\\Entity\\\\Event).end:\n    This value should be greater than [event.start]. (code 778b7ae0-84d3-481a-9dec-35fdb64b1d78)\n in event\n{\u0022title\u0022:\u0022title\u0022,\u0022start\u0022:\u00222020-01-01 12:00:00\u0022,\u0022end\u0022:\u00222020-01-01 00:00:00\u0022}"}'
         ];
         yield 'overlappingPostedEvents' => [
             <<<JSON
               [{"title":"Test1","start":"2020-01-01T00:00:00","end":"2020-01-01T12:00:00"},{"title":"Test2","start":"2020-01-01T00:00:00","end":"2020-01-01T12:00:00"}]
             JSON,
-            '{"success":false,"message":"Event 0 overlaps with event 1"}'
+            '{"success":false,"message":"Validation error: Event {\u0022id\u0022:null,\u0022title\u0022:\u0022Test2\u0022,\u0022start\u0022:\u00222020-01-01T00:00:00\u0022,\u0022end\u0022:\u00222020-01-01T12:00:00\u0022} overlaps with {\u0022id\u0022:null,\u0022title\u0022:\u0022Test1\u0022,\u0022start\u0022:\u00222020-01-01T00:00:00\u0022,\u0022end\u0022:\u00222020-01-01T12:00:00\u0022}"}'
+        ];
+        yield 'dbOverlappingPostedEvents' => [
+            <<<JSON
+              [{"title":"Test1","start":"2025-01-01T12:00:00","end":"2025-01-01T12:30:00"}]
+            JSON,
+            '{"success":false,"message":"Validation error: Event {\u0022id\u0022:null,\u0022title\u0022:\u0022Test1\u0022,\u0022start\u0022:\u00222025-01-01T12:00:00\u0022,\u0022end\u0022:\u00222025-01-01T12:30:00\u0022} overlaps with {\u0022id\u0022:1,\u0022title\u0022:\u0022Test Event 0\u0022,\u0022start\u0022:\u00222025-01-01T12:00:00\u0022,\u0022end\u0022:\u00222025-01-01T13:00:00\u0022}"}'
         ];
     }
 
@@ -106,9 +109,47 @@ class EventControllerTest extends KernelTestCase
             $container->get(SerializerInterface::class),
             $container->get(ValidatorInterface::class),
             $container->get(EntityManagerInterface::class),
+            $container->get(EventRepository::class),
+            $container->get(EventPayloadValidator::class),
         );
         $this->assertEquals(400, $response->getStatusCode());
         $this->assertEquals('application/json', $response->headers->get('Content-Type'));
         $this->assertEquals($message, $response->getContent());
+    }
+
+    public function testValidPostEvents()
+    {
+        self::bootKernel();
+        $container = static::getContainer();
+
+        $request = $this->createMock(Request::class);
+        $request->method('getContent')->willReturn("{body}");
+
+        $serializer = $container->get(SerializerInterface::class);
+        $validator = $container->get(ValidatorInterface::class);
+        $entityManager = $container->get(EntityManagerInterface::class);
+        $eventRepository = $container->get(EventRepository::class);
+
+
+        $mockPayloadValidator = $this->createMock(EventPayloadValidator::class);
+        $mockPayloadValidator->expects(static::once())->method('deserializeEvents')->with("{body}", $serializer)->willReturn(['__MOCK__']);
+        $mockPayloadValidator->expects(static::once())->method('checkForValidationErrors')->with(['__MOCK__'], $validator);
+        $mockPayloadValidator->expects(static::once())->method('checkLocalOverlaps')->with(['__MOCK__']);
+        $mockPayloadValidator->expects(static::once())->method('checkDatabaseOverlaps')->with(['__MOCK__'], $eventRepository);
+        $mockPayloadValidator->expects(static::once())->method('persistEvents')->with(['__MOCK__'], $entityManager);
+
+        $controller = new EventController();
+        $controller->setContainer($container);
+        $response = $controller->create(
+            $request,
+            $serializer,
+            $validator,
+            $entityManager,
+            $eventRepository,
+            $mockPayloadValidator,
+        );
+        $this->assertEquals(200, $response->getStatusCode());
+        $this->assertEquals('application/json', $response->headers->get('Content-Type'));
+        $this->assertEquals('{"success":true,"inserted":["__MOCK__"]}', $response->getContent());
     }
 }
