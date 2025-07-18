@@ -44,7 +44,21 @@ final class EventController extends AbstractController
         $this->addDateFilter('start <', EventFilter::startTo, $request->query->getString(EventFilter::startTo->value), $query);
         $this->addDateFilter('end >', EventFilter::endFrom, $request->query->getString(EventFilter::endFrom->value), $query);
         $this->addDateFilter('end <', EventFilter::endTo, $request->query->getString(EventFilter::endTo->value), $query);
+        $this->addTextFilter('title', EventFilter::title, $request->query->getString(EventFilter::title->value), $query);
         return $query->getQuery();
+    }
+
+    /**
+     * @param 'title' $column
+     * @throws InvalidFilterException
+     */
+    protected function addTextFilter(string $column, EventFilter $filter, string $value, QueryBuilder $query): void
+    {
+        if (!$value) {
+            return;
+        }
+        $query->andWhere("event.{$column} LIKE :{$filter->value}");
+        $query->setParameter($filter->value, "%$value%");
     }
 
     /**

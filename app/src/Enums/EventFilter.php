@@ -9,5 +9,6 @@ enum EventFilter: string
     case startTo = 'startTo';
     case endFrom = 'endFrom';
     case endTo = 'endTo';
+    case title = 'title';
 
 }
