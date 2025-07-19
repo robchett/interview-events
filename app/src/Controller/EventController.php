@@ -2,6 +2,7 @@
 
 namespace App\Controller;
 
+use App\Entity\Event;
 use App\Exception\EventDeserializationException;
 use App\Exception\EventValidationException;
 use App\Form\GetEventsRequest;
@@ -45,7 +46,6 @@ final class EventController extends AbstractController
         EventPayloadValidator  $payloadValidator,
     ): Response
     {
-
         try {
             $eventBody = $request->getContent();
             $events = $payloadValidator->deserializeEvents($eventBody, $serializer);
@@ -60,9 +60,52 @@ final class EventController extends AbstractController
         return $this->json(['success' => true, 'inserted' => $events]);
     }
 
-    #[Route('/events', methods: ['PATCH'])]
-    public function update(): array
+    #[Route('/events/{id:event}', methods: ['PATCH'])]
+    public function update(
+        Request                $request,
+        Event                  $event,
+        SerializerInterface    $serializer,
+        ValidatorInterface     $validator,
+        EntityManagerInterface $entityManager,
+        EventRepository        $eventRepository,
+        EventPayloadValidator  $payloadValidator,
+    ): Response
     {
-        return [];
+        try {
+            $id = $event->getId();
+            if ($id === null) {
+                return $this->json(['success' => false, 'message' => 'Event not found'], 400);
+            }
+            $eventBody = $request->getContent();
+            $newEvent = $payloadValidator->deserializeEvent($eventBody, $serializer);
+            $payloadValidator->checkForValidationErrors([$newEvent], $validator);
+            /** @psalm-suppress PossiblyNullArgument */
+            $event
+                ->setTitle($newEvent->getTitle())
+                ->setStart($newEvent->getStart())
+                ->setEnd($newEvent->getEnd());
+            $payloadValidator->checkDatabaseOverlaps([$event], $eventRepository, $id);
+            $payloadValidator->persistEvents([$event], $entityManager);
+        } catch (EventValidationException|EventDeserializationException $exception) {
+            return $this->json(['success' => false, 'message' => $exception->getMessage()], 400);
+        }
+
+        return $this->json(['success' => true, 'updated' => $event]);
+    }
+
+    #[Route('/events/{id:event}', methods: ['DELETE'])]
+    public function delete(
+        Event                  $event,
+        EntityManagerInterface $entityManager,
+    ): Response
+    {
+        $id = $event->getId();
+        if ($id === null) {
+            return $this->json(['success' => false, 'message' => 'Event not found'], 400);
+        }
+        $entityManager->remove($event);
+        $entityManager->flush();
+
+        return $this->json(['success' => true, 'message' => 'Event deleted']);
     }
 }

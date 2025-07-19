@@ -156,4 +156,125 @@ class EventControllerTest extends KernelTestCase
         $this->assertEquals('application/json', $response->headers->get('Content-Type'));
         $this->assertEquals('{"success":true,"inserted":["__MOCK__"]}', $response->getContent());
     }
+
+    public function testValidPatchEvent()
+    {
+        self::bootKernel();
+        $container = static::getContainer();
+
+        $request = $this->createMock(Request::class);
+        $request->method('getContent')->willReturn("{body}");
+
+        $event = $this->createPartialMock(Event::class, ['getId']);
+        $event->method('getId')->willReturn(999);
+        $serializer = $container->get(SerializerInterface::class);
+        $validator = $container->get(ValidatorInterface::class);
+        $entityManager = $container->get(EntityManagerInterface::class);
+        $eventRepository = $container->get(EventRepository::class);
+
+        $parsedEvent = $this->createMock(Event::class);
+        $parsedEvent->method('getTitle')->willReturn('__mock_title__');
+        $parsedEvent->method('getStart')->willReturn(\DateTimeImmutable::createFromFormat('Y-m-d\TH:i:s', '2020-01-01T00:00:00'));
+        $parsedEvent->method('getEnd')->willReturn(\DateTimeImmutable::createFromFormat('Y-m-d\TH:i:s', '2020-01-01T01:00:00'));
+
+        $mockPayloadValidator = $this->createMock(EventPayloadValidator::class);
+        $mockPayloadValidator->expects(static::once())->method('deserializeEvent')->with("{body}", $serializer)->willReturn($parsedEvent);
+        $mockPayloadValidator->expects(static::once())->method('checkForValidationErrors')->with([$event], $validator);
+        $mockPayloadValidator->expects(static::once())->method('checkDatabaseOverlaps')->with([$event], $eventRepository, 999);
+        $mockPayloadValidator->expects(static::once())->method('persistEvents')->with([$event], $entityManager);
+
+        $controller = new EventController();
+        $controller->setContainer($container);
+        $response = $controller->update(
+            $request,
+            $event,
+            $serializer,
+            $validator,
+            $entityManager,
+            $eventRepository,
+            $mockPayloadValidator,
+        );
+        $this->assertEquals(200, $response->getStatusCode());
+        $this->assertEquals('application/json', $response->headers->get('Content-Type'));
+        $this->assertEquals('{"success":true,"updated":{"id":999,"title":"__mock_title__","start":"2020-01-01T00:00:00","end":"2020-01-01T01:00:00"}}', $response->getContent());
+    }
+
+    public function testInvalidPatchEvent()
+    {
+        self::bootKernel();
+        $container = static::getContainer();
+
+        $request = $this->createMock(Request::class);
+        $request->method('getContent')->willReturn("{body}");
+
+        $event = $this->createMock(Event::class);
+        $event->method('getId')->willReturn(null);
+        $serializer = $container->get(SerializerInterface::class);
+        $validator = $container->get(ValidatorInterface::class);
+        $entityManager = $container->get(EntityManagerInterface::class);
+        $eventRepository = $container->get(EventRepository::class);
+        $mockPayloadValidator = $this->createMock(EventPayloadValidator::class);
+
+        $controller = new EventController();
+        $controller->setContainer($container);
+        $response = $controller->update(
+            $request,
+            $event,
+            $serializer,
+            $validator,
+            $entityManager,
+            $eventRepository,
+            $mockPayloadValidator,
+        );
+        $this->assertEquals(400, $response->getStatusCode());
+        $this->assertEquals('application/json', $response->headers->get('Content-Type'));
+        $this->assertEquals('{"success":false,"message":"Event not found"}', $response->getContent());
+    }
+
+    public function testValidDeleteEvent()
+    {
+        self::bootKernel();
+        $container = static::getContainer();
+
+        $event = $this->createPartialMock(Event::class, ['getId']);
+        $event->method('getId')->willReturn(999);
+
+        $entityManager = $this->createMock(EntityManagerInterface::class);
+        $entityManager->expects(static::once())->method('remove')->with($event);
+        $entityManager->expects(static::once())->method('flush');
+
+        $controller = new EventController();
+        $controller->setContainer($container);
+        $response = $controller->delete(
+            $event,
+            $entityManager,
+        );
+        $this->assertEquals(200, $response->getStatusCode());
+        $this->assertEquals('application/json', $response->headers->get('Content-Type'));
+        $this->assertEquals('{"success":true,"message":"Event deleted"}', $response->getContent());
+    }
+
+
+    public function testinValidDeleteEvent()
+    {
+        self::bootKernel();
+        $container = static::getContainer();
+
+        $event = $this->createPartialMock(Event::class, ['getId']);
+        $event->method('getId')->willReturn(null);
+
+        $entityManager = $this->createMock(EntityManagerInterface::class);
+        $entityManager->expects(static::never())->method('remove')->with($event);
+        $entityManager->expects(static::never())->method('flush');
+
+        $controller = new EventController();
+        $controller->setContainer($container);
+        $response = $controller->delete(
+            $event,
+            $entityManager,
+        );
+        $this->assertEquals(400, $response->getStatusCode());
+        $this->assertEquals('application/json', $response->headers->get('Content-Type'));
+        $this->assertEquals('{"success":false,"message":"Event not found"}', $response->getContent());
+    }
 }

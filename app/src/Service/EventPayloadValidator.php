@@ -13,20 +13,35 @@ use Symfony\Component\Serializer\Exception\ExceptionInterface;
 use Symfony\Component\Serializer\Exception\NotNormalizableValueException;
 use Symfony\Component\Serializer\Exception\UnexpectedValueException;
 use Symfony\Component\Serializer\SerializerInterface;
+use Symfony\Component\Validator\Constraints\NotBlank;
+use Symfony\Component\Validator\ConstraintViolation;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 final class EventPayloadValidator
 {
 
     /**
-     * @throws EventDeserializationException
      * @return Event[]
      * @psalm-suppress MixedReturnStatement
+     * @throws EventDeserializationException
      */
     public function deserializeEvents(string $eventBody, SerializerInterface $serializer): array
     {
         try {
             return $serializer->deserialize($eventBody, Event::class . '[]', 'json');
+        } catch (NotNormalizableValueException|UnexpectedValueException|ExceptionInterface $exception) {
+            throw new EventDeserializationException("Deserialization failed", previous: $exception);
+        }
+    }
+
+    /**
+     * @throws EventDeserializationException
+     * @psalm-suppress MixedReturnStatement
+     */
+    public function deserializeEvent(string $eventBody, SerializerInterface $serializer): Event
+    {
+        try {
+            return $serializer->deserialize($eventBody, Event::class, 'json');
         } catch (NotNormalizableValueException|UnexpectedValueException|ExceptionInterface $exception) {
             throw new EventDeserializationException("Deserialization failed", previous: $exception);
         }
@@ -83,20 +98,26 @@ final class EventPayloadValidator
      * Checks for overlaps in the persisted events are not performed
      * @param Event[] $events
      * @throws EventValidationException
-    */
+     */
     public function checkDatabaseOverlaps(
-        array $events, EventRepository $eventRepository): void
+        array $events, EventRepository $eventRepository, int $exclude = 0): void
     {
         $overlappingEvents = [];
 
         foreach ($events as $event) {
-            /** @var Event[] $matchedEvents */
-            $matchedEvents = $eventRepository->createQueryBuilder('event')
+
+            $queryBuilder = $eventRepository->createQueryBuilder('event')
                 ->orWhere("(event.start >= :start AND event.start < :end)")
                 ->orWhere("(event.end > :start AND event.end <= :end)")
                 ->orWhere("(event.start >= :start AND event.end <= :end)")
                 ->setParameter("start", $event->getStart())
-                ->setParameter("end", $event->getEnd())
+                ->setParameter("end", $event->getEnd());
+            if ($exclude) {
+                $queryBuilder->andWhere('event.id != :exclude');
+                $queryBuilder->setParameter('exclude', $exclude);
+            }
+            /** @var Event[] $matchedEvents */
+            $matchedEvents = $queryBuilder
                 ->getQuery()
                 ->execute();
             if (count($matchedEvents)) {
