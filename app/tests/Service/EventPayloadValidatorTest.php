@@ -109,7 +109,7 @@ class EventPayloadValidatorTest extends KernelTestCase
 
         $eventPayloadValidator = new EventPayloadValidator();
         $this->expectException(EventValidationException::class);
-        $this->expectExceptionMessage("Validation error: Event {\"id\":null,\"title\":\"Event 2\",\"start\":\"2020-01-01T12:00:00\",\"end\":\"2020-01-01T12:30:00\"} overlaps with {\"id\":null,\"title\":\"Event 1\",\"start\":\"2020-01-01T12:00:00\",\"end\":\"2020-01-01T13:00:00\"}");
+        $this->expectExceptionMessage("Validation error: Event {\"id\":null,\"title\":\"Event 2\",\"start\":\"2020-01-01T12:00:00\",\"end\":\"2020-01-01T12:30:00\",\"user_id\":null} overlaps with {\"id\":null,\"title\":\"Event 1\",\"start\":\"2020-01-01T12:00:00\",\"end\":\"2020-01-01T13:00:00\",\"user_id\":null}");
         $eventPayloadValidator->checkLocalOverlaps([$testEvent1, $testEvent2]);
     }
 
@@ -126,7 +126,7 @@ class EventPayloadValidatorTest extends KernelTestCase
         $eventPayloadValidator = new EventPayloadValidator();
         // Completing the method call without throwing an exception is sufficient
         $this->expectNotToPerformAssertions();
-        $eventPayloadValidator->checkDatabaseOverlaps([$testEvent1], $repository);
+        $eventPayloadValidator->checkDatabaseOverlaps([$testEvent1], $repository, 0, null);
     }
 
     public static function getInvalidTimes(): array
@@ -152,8 +152,8 @@ class EventPayloadValidatorTest extends KernelTestCase
 
         $eventPayloadValidator = new EventPayloadValidator();
         $this->expectException(EventValidationException::class);
-        $this->expectExceptionMessage("Validation error: Event {\"id\":null,\"title\":\"Event 1\",\"start\":\"$start\",\"end\":\"$end\"} overlaps with {\"id\":1,\"title\":\"Test Event 0\",\"start\":\"2025-01-01T12:00:00\",\"end\":\"2025-01-01T13:00:00\"}");
-        $eventPayloadValidator->checkDatabaseOverlaps([$testEvent1], $repository);
+        $this->expectExceptionMessage("Validation error: Event {\"id\":null,\"title\":\"Event 1\",\"start\":\"$start\",\"end\":\"$end\",\"user_id\":null} overlaps with {\"id\":1,\"title\":\"Test Event 0\",\"start\":\"2025-01-01T12:00:00\",\"end\":\"2025-01-01T13:00:00\",\"user_id\":0}");
+        $eventPayloadValidator->checkDatabaseOverlaps([$testEvent1], $repository, 0, null);
     }
 
     public function testPersistEvents()

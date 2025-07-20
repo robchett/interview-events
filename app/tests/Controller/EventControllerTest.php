@@ -37,12 +37,13 @@ class EventControllerTest extends KernelTestCase
         $controller->setContainer($container);
         $response = $controller->list(
             new Request(),
-            $eventRepository
+            $eventRepository,
+            null
         );
         $this->assertEquals(200, $response->getStatusCode());
         $this->assertEquals('application/json', $response->headers->get('Content-Type'));
         $expectedBody = <<<JSON
-        [{"id":null,"title":"Test1","start":"2020-01-01T00:00:00","end":"2020-01-01T12:00:00"},{"id":null,"title":"Test2","start":"2020-01-01T00:00:00","end":"2020-01-01T12:00:00"},{"id":null,"title":"Test3","start":"2020-01-01T00:00:00","end":"2020-01-01T12:00:00"}]
+        [{"id":null,"title":"Test1","start":"2020-01-01T00:00:00","end":"2020-01-01T12:00:00","user_id":null},{"id":null,"title":"Test2","start":"2020-01-01T00:00:00","end":"2020-01-01T12:00:00","user_id":null},{"id":null,"title":"Test3","start":"2020-01-01T00:00:00","end":"2020-01-01T12:00:00","user_id":null}]
         JSON;
         $this->assertEquals($expectedBody, $response->getContent());
     }
@@ -87,13 +88,13 @@ class EventControllerTest extends KernelTestCase
             <<<JSON
               [{"title":"Test1","start":"2020-01-01T00:00:00","end":"2020-01-01T12:00:00"},{"title":"Test2","start":"2020-01-01T00:00:00","end":"2020-01-01T12:00:00"}]
             JSON,
-            '{"success":false,"message":"Validation error: Event {\u0022id\u0022:null,\u0022title\u0022:\u0022Test2\u0022,\u0022start\u0022:\u00222020-01-01T00:00:00\u0022,\u0022end\u0022:\u00222020-01-01T12:00:00\u0022} overlaps with {\u0022id\u0022:null,\u0022title\u0022:\u0022Test1\u0022,\u0022start\u0022:\u00222020-01-01T00:00:00\u0022,\u0022end\u0022:\u00222020-01-01T12:00:00\u0022}"}'
+            '{"success":false,"message":"Validation error: Event {\u0022id\u0022:null,\u0022title\u0022:\u0022Test2\u0022,\u0022start\u0022:\u00222020-01-01T00:00:00\u0022,\u0022end\u0022:\u00222020-01-01T12:00:00\u0022,\u0022user_id\u0022:null} overlaps with {\u0022id\u0022:null,\u0022title\u0022:\u0022Test1\u0022,\u0022start\u0022:\u00222020-01-01T00:00:00\u0022,\u0022end\u0022:\u00222020-01-01T12:00:00\u0022,\u0022user_id\u0022:null}"}'
         ];
         yield 'dbOverlappingPostedEvents' => [
             <<<JSON
               [{"title":"Test1","start":"2025-01-01T12:00:00","end":"2025-01-01T12:30:00"}]
             JSON,
-            '{"success":false,"message":"Validation error: Event {\u0022id\u0022:null,\u0022title\u0022:\u0022Test1\u0022,\u0022start\u0022:\u00222025-01-01T12:00:00\u0022,\u0022end\u0022:\u00222025-01-01T12:30:00\u0022} overlaps with {\u0022id\u0022:1,\u0022title\u0022:\u0022Test Event 0\u0022,\u0022start\u0022:\u00222025-01-01T12:00:00\u0022,\u0022end\u0022:\u00222025-01-01T13:00:00\u0022}"}'
+            '{"success":false,"message":"Validation error: Event {\u0022id\u0022:null,\u0022title\u0022:\u0022Test1\u0022,\u0022start\u0022:\u00222025-01-01T12:00:00\u0022,\u0022end\u0022:\u00222025-01-01T12:30:00\u0022,\u0022user_id\u0022:null} overlaps with {\u0022id\u0022:1,\u0022title\u0022:\u0022Test Event 0\u0022,\u0022start\u0022:\u00222025-01-01T12:00:00\u0022,\u0022end\u0022:\u00222025-01-01T13:00:00\u0022,\u0022user_id\u0022:0}"}'
         ];
     }
 
@@ -115,6 +116,7 @@ class EventControllerTest extends KernelTestCase
             $container->get(EntityManagerInterface::class),
             $container->get(EventRepository::class),
             $container->get(EventPayloadValidator::class),
+            null
         );
         $this->assertEquals(400, $response->getStatusCode());
         $this->assertEquals('application/json', $response->headers->get('Content-Type'));
@@ -151,6 +153,7 @@ class EventControllerTest extends KernelTestCase
             $entityManager,
             $eventRepository,
             $mockPayloadValidator,
+            null
         );
         $this->assertEquals(200, $response->getStatusCode());
         $this->assertEquals('application/json', $response->headers->get('Content-Type'));
@@ -180,7 +183,7 @@ class EventControllerTest extends KernelTestCase
         $mockPayloadValidator = $this->createMock(EventPayloadValidator::class);
         $mockPayloadValidator->expects(static::once())->method('deserializeEvent')->with("{body}", $serializer)->willReturn($parsedEvent);
         $mockPayloadValidator->expects(static::once())->method('checkForValidationErrors')->with([$event], $validator);
-        $mockPayloadValidator->expects(static::once())->method('checkDatabaseOverlaps')->with([$event], $eventRepository, 999);
+        $mockPayloadValidator->expects(static::once())->method('checkDatabaseOverlaps')->with([$event], $eventRepository, 999, null);
         $mockPayloadValidator->expects(static::once())->method('persistEvents')->with([$event], $entityManager);
 
         $controller = new EventController();
@@ -193,10 +196,11 @@ class EventControllerTest extends KernelTestCase
             $entityManager,
             $eventRepository,
             $mockPayloadValidator,
+            null
         );
         $this->assertEquals(200, $response->getStatusCode());
         $this->assertEquals('application/json', $response->headers->get('Content-Type'));
-        $this->assertEquals('{"success":true,"updated":{"id":999,"title":"__mock_title__","start":"2020-01-01T00:00:00","end":"2020-01-01T01:00:00"}}', $response->getContent());
+        $this->assertEquals('{"success":true,"updated":{"id":999,"title":"__mock_title__","start":"2020-01-01T00:00:00","end":"2020-01-01T01:00:00","user_id":null}}', $response->getContent());
     }
 
     public function testInvalidPatchEvent()
@@ -225,6 +229,7 @@ class EventControllerTest extends KernelTestCase
             $entityManager,
             $eventRepository,
             $mockPayloadValidator,
+            null
         );
         $this->assertEquals(400, $response->getStatusCode());
         $this->assertEquals('application/json', $response->headers->get('Content-Type'));
@@ -248,6 +253,7 @@ class EventControllerTest extends KernelTestCase
         $response = $controller->delete(
             $event,
             $entityManager,
+            null
         );
         $this->assertEquals(200, $response->getStatusCode());
         $this->assertEquals('application/json', $response->headers->get('Content-Type'));
@@ -272,6 +278,7 @@ class EventControllerTest extends KernelTestCase
         $response = $controller->delete(
             $event,
             $entityManager,
+            null
         );
         $this->assertEquals(400, $response->getStatusCode());
         $this->assertEquals('application/json', $response->headers->get('Content-Type'));

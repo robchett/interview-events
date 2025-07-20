@@ -2,6 +2,7 @@
 
 namespace App\Form;
 
+use App\Entity\User;
 use App\Enums\EventFilter;
 use App\Repository\EventRepository;
 use Doctrine\ORM\Query;
@@ -24,7 +25,7 @@ final class GetEventsRequest
     #[Assert\GreaterThan(0)]
     public ?int $page = null;
 
-    public function getQuery(EventRepository $eventManager): Query
+    public function getQuery(EventRepository $eventManager, ?User $user): Query
     {
         $query = $eventManager->createQueryBuilder('event');
         $query->addOrderBy('event.start', 'ASC');
@@ -34,6 +35,9 @@ final class GetEventsRequest
         $this->addDateFilter('end <', EventFilter::endTo, $this->endTo ?? null, $query);
         $this->addTextFilter('title', EventFilter::title, $this->title ?? '', $query);
         $this->addPagination($this->pageSize ?? 1000, $this->page ?? 1, $query);
+        $query
+            ->andWhere('event.user_id = :user_id')
+            ->setParameter('user_id', $user?->getId() ?? 0);
         return $query->getQuery();
     }
 

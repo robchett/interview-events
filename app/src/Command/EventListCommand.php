@@ -79,6 +79,7 @@ final class EventListCommand extends Command
     {
         assert($event->getStart() !== null);
         assert($event->getEnd() !== null);
-        return "{$event->getTitle()} | {$event->getStart()->format('Y-m-d H:i:s')} - {$event->getEnd()->format('Y-m-d H:i:s')}";
+        $userId = ($event->getUserId() == 0 || $event->getUserId() !== null) ? $event->getUserId() : 'public';
+        return "{$event->getTitle()} | {$event->getStart()->format('Y-m-d H:i:s')} - {$event->getEnd()->format('Y-m-d H:i:s')} | {$userId}";
     }
 }

@@ -23,6 +23,7 @@ final class AppFixtures extends Fixture
             $event->setTitle('Test Event ' . $i);
             $event->setStart($start->setTime(12,0,0)->add($date));
             $event->setEnd($start->setTime(13,0,0)->add($date));
+            $event->setUserId(0);
             $manager->persist($event);
             if ($i % 100 === 0) {
                 $manager->flush();

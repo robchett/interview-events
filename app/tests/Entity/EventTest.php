@@ -43,7 +43,7 @@ class EventTest extends TestCase
         $entity->setEnd(DateTimeImmutable::createFromFormat('Y-m-d\TH:i:s', '2021-01-01T00:00:00'));
 
         $this->assertEquals(
-            '{"id":null,"title":"Test","start":"2020-01-01T00:00:00","end":"2021-01-01T00:00:00"}',
+            '{"id":null,"title":"Test","start":"2020-01-01T00:00:00","end":"2021-01-01T00:00:00","user_id":null}',
             json_encode($entity)
         );
     }

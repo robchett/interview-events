@@ -5,6 +5,7 @@ namespace App\Service;
 use App\Dto\EventOverlapError;
 use App\Dto\EventValidationError;
 use App\Entity\Event;
+use App\Entity\User;
 use App\Exception\EventDeserializationException;
 use App\Exception\EventValidationException;
 use App\Repository\EventRepository;
@@ -46,6 +47,21 @@ final class EventPayloadValidator
             throw new EventDeserializationException("Deserialization failed", previous: $exception);
         }
     }
+
+    /**
+     * @param Event[] $events
+     */
+    public function setUser(array $events, ?User $user): void
+    {
+        $userId = $user?->getId();
+        if ($userId === null || $userId === 0) {
+            return;
+        }
+        foreach ($events as $event) {
+            $event->setUserId($userId);
+        }
+    }
+
 
     /**
      * Checks for Entity errors on the Events.
@@ -100,7 +116,7 @@ final class EventPayloadValidator
      * @throws EventValidationException
      */
     public function checkDatabaseOverlaps(
-        array $events, EventRepository $eventRepository, int $exclude = 0): void
+        array $events, EventRepository $eventRepository, int $exclude = 0, ?User $user): void
     {
         $overlappingEvents = [];
 
@@ -115,6 +131,10 @@ final class EventPayloadValidator
             if ($exclude) {
                 $queryBuilder->andWhere('event.id != :exclude');
                 $queryBuilder->setParameter('exclude', $exclude);
+            }
+            if ($user) {
+                $queryBuilder->andWhere('event.user_id = :user_id');
+                $queryBuilder->setParameter('user_id', $user->getId());
             }
             /** @var Event[] $matchedEvents */
             $matchedEvents = $queryBuilder
