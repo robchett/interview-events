@@ -32,7 +32,7 @@ final class EventController extends AbstractController
             $query = $eventsRequest->getQuery($eventManager);
             return $this->json($query->execute());
         } else {
-            return $this->json(["success" => false, "message" => $form->getErrors(), "submitted" => $form->isSubmitted(), 'valid' => $form->isValid()], 400);
+            return $this->json(["success" => false, "message" => $form->getErrors(), "submitted" => $form->isSubmitted(), 'valid' => $form->isValid()], Response::HTTP_BAD_REQUEST);
         }
     }
 
@@ -54,7 +54,7 @@ final class EventController extends AbstractController
             $payloadValidator->checkDatabaseOverlaps($events, $eventRepository);
             $payloadValidator->persistEvents($events, $entityManager);
         } catch (EventValidationException|EventDeserializationException $exception) {
-            return $this->json(['success' => false, 'message' => $exception->getMessage()], 400);
+            return $this->json(['success' => false, 'message' => $exception->getMessage()], Response::HTTP_BAD_REQUEST);
         }
 
         return $this->json(['success' => true, 'inserted' => $events]);
@@ -74,7 +74,7 @@ final class EventController extends AbstractController
         try {
             $id = $event->getId();
             if ($id === null) {
-                return $this->json(['success' => false, 'message' => 'Event not found'], 400);
+                return $this->json(['success' => false, 'message' => 'Event not found'], Response::HTTP_BAD_REQUEST);
             }
             $eventBody = $request->getContent();
             $newEvent = $payloadValidator->deserializeEvent($eventBody, $serializer);
@@ -87,7 +87,7 @@ final class EventController extends AbstractController
             $payloadValidator->checkDatabaseOverlaps([$event], $eventRepository, $id);
             $payloadValidator->persistEvents([$event], $entityManager);
         } catch (EventValidationException|EventDeserializationException $exception) {
-            return $this->json(['success' => false, 'message' => $exception->getMessage()], 400);
+            return $this->json(['success' => false, 'message' => $exception->getMessage()], Response::HTTP_BAD_REQUEST);
         }
 
         return $this->json(['success' => true, 'updated' => $event]);
@@ -101,7 +101,7 @@ final class EventController extends AbstractController
     {
         $id = $event->getId();
         if ($id === null) {
-            return $this->json(['success' => false, 'message' => 'Event not found'], 400);
+            return $this->json(['success' => false, 'message' => 'Event not found'], Response::HTTP_BAD_REQUEST);
         }
         $entityManager->remove($event);
         $entityManager->flush();
