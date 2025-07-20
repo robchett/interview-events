@@ -1,6 +1,6 @@
 FROM php:8.4
 
-RUN apt-get update && apt-get install -y wget git libicu-dev zip
+RUN apt-get update && apt-get install -y wget git libicu-dev zip dos2unix
 RUN docker-php-ext-install pdo_mysql intl opcache
 
 WORKDIR /var/www/html
@@ -13,3 +13,4 @@ RUN mv /root/.symfony5/bin/symfony /usr/local/bin/symfony
 
 COPY --chown=www-data:www-data app .
 RUN ./composer.phar install
+RUN find . -type f -print0 | xargs -0 dos2unix
